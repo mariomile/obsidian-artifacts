@@ -1,0 +1,9 @@
+{
+  "id": "artifacts",
+  "name": "Artifacts",
+  "version": "0.1.0",
+  "minAppVersion": "1.12.7",
+  "description": "View, embed, and screenshot self-contained HTML artifacts inside Obsidian.",
+  "author": "Mario Miletta",
+  "isDesktopOnly": false
+}
