@@ -16,3 +16,8 @@ pnpm dev     # watch build, deploys to the path in .obsidian-plugin-dir
 pnpm build   # production build
 pnpm test    # unit tests (pure logic only)
 ```
+
+## Try it
+
+See it running in the [Obsidianverse sample vault](https://github.com/mariomile/obsidianverse-sample-vault) — a small, fictional vault with the whole plugin suite pre-configured.
+
