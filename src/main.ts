@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, parseSettings } from './settings.ts';
 import type { ArtifactsSettings } from './settings.ts';
 import { ArtifactsSettingTab } from './settings-tab.ts';
 import { ARTIFACT_VIEW_TYPE, ArtifactView } from './view.ts';
+import { registerArtifactEmbed, unregisterArtifactEmbed } from './embed.ts';
 
 const HTML_EXTENSIONS = ['html', 'htm'];
 
@@ -20,7 +21,17 @@ export default class ArtifactsPlugin extends Plugin {
       console.warn('Artifacts: could not register .html/.htm extensions.', error);
     }
 
+    if (!registerArtifactEmbed(this)) {
+      console.warn(
+        'Artifacts: embedRegistry unavailable on this Obsidian version — inline embeds disabled.',
+      );
+    }
+
     this.addSettingTab(new ArtifactsSettingTab(this.app, this));
+  }
+
+  onunload(): void {
+    unregisterArtifactEmbed(this.app);
   }
 
   async saveSettings(): Promise<void> {
