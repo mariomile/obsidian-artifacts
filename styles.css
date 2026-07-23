@@ -1,0 +1,36 @@
+/* Artifacts — sizing for the rendered HTML frame (webview desktop / iframe mobile). */
+
+.artifacts-container {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Standalone view: the frame fills the whole tab content area. */
+.artifacts-container .artifacts-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: var(--background-primary);
+}
+
+/* Electron <webview> needs an explicit block box or it collapses to 0px. */
+.artifacts-webview {
+  flex: 1 1 auto;
+}
+
+/* Inline embed: give the frame a sensible default height inside the note flow. */
+.artifacts-embed-container {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+}
+
+.artifacts-embed-container .artifacts-frame {
+  display: block;
+  width: 100%;
+  height: 480px;
+  border: none;
+  background: var(--background-primary);
+}

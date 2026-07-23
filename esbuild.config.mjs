@@ -46,6 +46,9 @@ const context = await esbuild.context({
 
 if (resolve(outdir) !== resolve(projectRoot)) {
   copyFileSync('manifest.json', resolve(outdir, 'manifest.json'));
+  if (existsSync('styles.css')) {
+    copyFileSync('styles.css', resolve(outdir, 'styles.css'));
+  }
 }
 
 if (production) {
