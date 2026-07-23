@@ -5,6 +5,7 @@ import type { ArtifactsSettings } from './settings.ts';
 import { ArtifactsSettingTab } from './settings-tab.ts';
 import { ARTIFACT_VIEW_TYPE, ArtifactView } from './view.ts';
 import { registerArtifactEmbed, unregisterArtifactEmbed } from './embed.ts';
+import { registerScreenshotCommand } from './screenshot.ts';
 
 const HTML_EXTENSIONS = ['html', 'htm'];
 
@@ -27,6 +28,7 @@ export default class ArtifactsPlugin extends Plugin {
       );
     }
 
+    registerScreenshotCommand(this);
     this.addSettingTab(new ArtifactsSettingTab(this.app, this));
   }
 
