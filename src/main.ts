@@ -1,13 +1,25 @@
 import { Plugin } from 'obsidian';
+import type { WorkspaceLeaf } from 'obsidian';
 import { DEFAULT_SETTINGS, parseSettings } from './settings.ts';
 import type { ArtifactsSettings } from './settings.ts';
 import { ArtifactsSettingTab } from './settings-tab.ts';
+import { ARTIFACT_VIEW_TYPE, ArtifactView } from './view.ts';
+
+const HTML_EXTENSIONS = ['html', 'htm'];
 
 export default class ArtifactsPlugin extends Plugin {
   settings: ArtifactsSettings = DEFAULT_SETTINGS;
 
   async onload(): Promise<void> {
     this.settings = parseSettings(await this.loadData());
+
+    this.registerView(ARTIFACT_VIEW_TYPE, (leaf: WorkspaceLeaf) => new ArtifactView(leaf, this));
+    try {
+      this.registerExtensions(HTML_EXTENSIONS, ARTIFACT_VIEW_TYPE);
+    } catch (error) {
+      console.warn('Artifacts: could not register .html/.htm extensions.', error);
+    }
+
     this.addSettingTab(new ArtifactsSettingTab(this.app, this));
   }
 
