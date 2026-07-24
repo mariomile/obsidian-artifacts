@@ -4,6 +4,7 @@ import { injectBaseTag, resourceDirFromPath, toFileUrl } from './html-transform.
 import { resolveClickedLink } from './link-resolve.ts';
 import type { ResolvedLink } from './link-resolve.ts';
 import { createWebviewElement } from './webview-types.ts';
+import { whenSized } from './when-sized.ts';
 import type {
   WebviewConsoleMessageEvent,
   WebviewFailLoadEvent,
@@ -36,6 +37,7 @@ export interface HtmlRendererCallbacks {
 
 export class HtmlRenderer {
   private frame: HTMLElement | null = null;
+  private disposeAttach: (() => void) | null = null;
 
   constructor(
     private app: App,
@@ -55,6 +57,8 @@ export class HtmlRenderer {
   }
 
   clear(container: HTMLElement): void {
+    this.disposeAttach?.();
+    this.disposeAttach = null;
     this.frame?.remove();
     this.frame = null;
     container.empty();
@@ -99,8 +103,21 @@ export class HtmlRenderer {
     webview.addEventListener('will-navigate', interceptNavigation);
     webview.addEventListener('new-window', interceptNavigation);
 
-    container.appendChild(webview);
     this.frame = webview;
+    // Attach only once the container has a real height. An Electron <webview>
+    // guest snapshots its viewport from the host element at attach time and
+    // never recovers if that height was 0/indefinite (deferred or background
+    // tab) — it sticks at the 150px UA default and clips the artifact.
+    this.disposeAttach = whenSized(container, () => {
+      this.disposeAttach = null;
+      if (this.frame === webview && !webview.isConnected) {
+        container.appendChild(webview);
+        // Force the guest to re-sync to the settled host box. A <webview>
+        // attached via a CSS class alone keeps the 150px default; an explicit
+        // inline display assignment triggers the reflow that resizes the guest.
+        webview.style.display = 'flex';
+      }
+    });
   }
 
   private async renderIframe(container: HTMLElement, file: TFile): Promise<void> {

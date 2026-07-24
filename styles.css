@@ -14,8 +14,13 @@
   background: var(--background-primary);
 }
 
-/* Electron <webview> needs an explicit block box or it collapses to 0px. */
-.artifacts-webview {
+/* An Electron <webview> sizes its guest to the host box only with the flex
+   display it ships with by default — forcing display:block leaves the guest
+   stuck at the 150px UA default and clips the artifact. The renderer also sets
+   this inline after attach to force the guest re-sync; this keeps the resting
+   state correct. */
+.artifacts-container .artifacts-webview {
+  display: flex;
   flex: 1 1 auto;
 }
 
