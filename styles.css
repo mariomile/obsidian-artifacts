@@ -3,6 +3,8 @@
 .artifacts-container {
   padding: 0;
   overflow: hidden;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Standalone view: the frame fills the whole tab content area. */
@@ -30,6 +32,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius-m);
+  position: relative;
 }
 
 .artifacts-embed-container .artifacts-frame {
@@ -38,4 +41,144 @@
   height: 480px;
   border: none;
   background: var(--background-primary);
+}
+
+/* Mobile-only floating pill over the artifact frame (expand / reload / open externally).
+   Built from Obsidian tokens so a theme (Cosmos) skins it for free. Sits above the safe area. */
+.artifacts-toolbar {
+  position: absolute;
+  right: calc(var(--size-4-3) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--size-4-3) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: var(--size-4-1);
+  padding: var(--size-4-1);
+  border-radius: var(--radius-l);
+  /* Come la selection toolbar: contratto di elevazione condiviso, letterali
+     storici come fallback. */
+  background: var(--mv-card-bg, var(--background-secondary));
+  border: 1px solid var(--mv-card-border, var(--background-modifier-border));
+  box-shadow: var(--mv-card-rest, var(--shadow-s));
+  opacity: 0.9;
+  z-index: 2;
+}
+
+.artifacts-toolbar:focus-within {
+  opacity: 1;
+}
+
+.artifacts-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.artifacts-toolbar-btn:active {
+  background: var(--background-modifier-active-hover);
+  color: var(--text-normal);
+}
+
+.artifacts-toolbar-btn .svg-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Mobile-only tap-to-load poster: keeps an external-script artifact from auto-running (and
+   freezing the shared main thread) until the user opts in. Styled from Obsidian tokens. */
+.artifacts-poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-2);
+  min-height: 240px;
+  height: 100%;
+  padding: var(--size-4-6) var(--size-4-4);
+  text-align: center;
+  background: var(--background-secondary);
+}
+
+.artifacts-embed-container .artifacts-poster {
+  min-height: 200px;
+  border-radius: var(--radius-m);
+}
+
+.artifacts-poster-icon {
+  color: var(--text-muted);
+}
+
+.artifacts-poster-icon .svg-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.artifacts-poster-title {
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+}
+
+.artifacts-poster-sub {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.artifacts-poster-warn {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2-2);
+  max-width: 34ch;
+  margin-top: var(--size-2-1);
+  padding: var(--size-2-2) var(--size-4-2);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+}
+
+.artifacts-poster-warn-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.artifacts-poster-warn-icon .svg-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.artifacts-poster-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-2);
+}
+
+.artifacts-poster-btn {
+  padding: var(--size-4-2) var(--size-4-4);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.artifacts-poster-btn.is-cta {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.artifacts-poster-btn.is-cta:active {
+  background: var(--interactive-accent-hover);
 }

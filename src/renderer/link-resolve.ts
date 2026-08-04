@@ -22,3 +22,37 @@ export function resolveClickedLink(href: string, vaultBasePath: string): Resolve
   }
   return { kind: 'external', url: href };
 }
+
+/** Collapses `.` and `..` segments in a slash path, dropping empty segments. */
+function normalizeVaultPath(path: string): string {
+  const out: string[] = [];
+  for (const segment of path.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') {
+      out.pop();
+      continue;
+    }
+    out.push(segment);
+  }
+  return out.join('/');
+}
+
+/** Resolves a link clicked inside the *mobile* iframe (no `FileSystemAdapter`, so we can't use
+ *  `resolveClickedLink`). A raw href with a scheme (`http:`, `mailto:`, `//host`) opens externally;
+ *  a relative href resolves against the artifact's folder (`fileDir`) to a vault-relative path.
+ *
+ *  @param rawHref     the `href` attribute exactly as authored in the HTML
+ *  @param resolvedHref the browser-resolved absolute URL (`a.href`), used for external links
+ *  @param fileDir     the artifact's parent folder as a vault path ('' for vault root) */
+export function resolveRelativeLink(
+  rawHref: string,
+  resolvedHref: string,
+  fileDir: string,
+): ResolvedLink {
+  if (/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(rawHref)) {
+    return { kind: 'external', url: resolvedHref || rawHref };
+  }
+  const clean = (rawHref.split('#')[0] ?? '').split('?')[0] ?? '';
+  if (!clean) return { kind: 'external', url: resolvedHref || rawHref };
+  return { kind: 'vault', path: normalizeVaultPath(fileDir ? `${fileDir}/${clean}` : clean) };
+}

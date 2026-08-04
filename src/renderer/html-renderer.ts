@@ -1,7 +1,7 @@
 import { FileSystemAdapter, Platform } from 'obsidian';
 import type { App, TFile } from 'obsidian';
-import { injectBaseTag, resourceDirFromPath, toFileUrl } from './html-transform.ts';
-import { resolveClickedLink } from './link-resolve.ts';
+import { injectBaseTag, injectViewportMeta, resourceDirFromPath, toFileUrl } from './html-transform.ts';
+import { resolveClickedLink, resolveRelativeLink } from './link-resolve.ts';
 import type { ResolvedLink } from './link-resolve.ts';
 import { createWebviewElement } from './webview-types.ts';
 import { whenSized } from './when-sized.ts';
@@ -16,6 +16,23 @@ const NAV_CHANNEL = 'ARTIFACTS_NAV::';
 const SANDBOX_MINIMAL = 'allow-same-origin allow-scripts';
 const SANDBOX_FULL =
   'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
+
+// Mobile has no <webview> and can't executeJavaScript into the iframe, so the intercept ships
+// inside the srcdoc. It posts the clicked link up to the host, which routes it (vault vs external).
+// Blocked only by an artifact's own strict inline-script CSP — rendering is unaffected either way.
+const IFRAME_NAV_SCRIPT = `<script>(function(){
+  if (window.__artifactsNav) return;
+  window.__artifactsNav = true;
+  document.addEventListener('click', function(e){
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+    if (/^(javascript|mailto|tel):/i.test(href)) return;
+    e.preventDefault();
+    try { window.parent.postMessage({ __artifactsNav: a.href, raw: href }, '*'); } catch (err) {}
+  }, true);
+})();</script>`;
 
 const LINK_INTERCEPT_SCRIPT = `(function(){
   if (window.__artifactsNav) return;
@@ -38,6 +55,7 @@ export interface HtmlRendererCallbacks {
 export class HtmlRenderer {
   private frame: HTMLElement | null = null;
   private disposeAttach: (() => void) | null = null;
+  private disposeMobileNav: (() => void) | null = null;
 
   constructor(
     private app: App,
@@ -59,6 +77,8 @@ export class HtmlRenderer {
   clear(container: HTMLElement): void {
     this.disposeAttach?.();
     this.disposeAttach = null;
+    this.disposeMobileNav?.();
+    this.disposeMobileNav = null;
     this.frame?.remove();
     this.frame = null;
     container.empty();
@@ -130,9 +150,22 @@ export class HtmlRenderer {
 
     const resourcePath = this.app.vault.getResourcePath(file);
     const baseHref = resourceDirFromPath(resourcePath);
+    const fileDir = file.parent && file.parent.path !== '/' ? file.parent.path : '';
+
+    const onMessage = (event: MessageEvent): void => {
+      if (event.source !== iframe.contentWindow) return;
+      const data = event.data as { __artifactsNav?: unknown; raw?: unknown } | null;
+      if (!data || typeof data.__artifactsNav !== 'string') return;
+      const raw = typeof data.raw === 'string' ? data.raw : data.__artifactsNav;
+      this.callbacks.onNavigate(resolveRelativeLink(raw, data.__artifactsNav, fileDir));
+    };
+    window.addEventListener('message', onMessage);
+    this.disposeMobileNav = () => window.removeEventListener('message', onMessage);
+
     try {
       const raw = await this.app.vault.cachedRead(file);
-      iframe.srcdoc = injectBaseTag(raw, baseHref);
+      const prepared = injectViewportMeta(injectBaseTag(raw, baseHref));
+      iframe.srcdoc = prepared + IFRAME_NAV_SCRIPT;
     } catch (error) {
       console.error('Artifacts: failed to read file, falling back to src.', error);
       iframe.setAttribute('src', resourcePath);

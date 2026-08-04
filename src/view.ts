@@ -1,13 +1,20 @@
-import { FileView, Notice, TFile, debounce } from 'obsidian';
+import { FileView, Notice, Platform, TFile, debounce } from 'obsidian';
 import type { TAbstractFile, WorkspaceLeaf } from 'obsidian';
 import { HtmlRenderer } from './renderer/html-renderer.ts';
+import { hasExternalScripts } from './renderer/html-transform.ts';
 import type { ResolvedLink } from './renderer/link-resolve.ts';
+import { createMobileToolbar } from './ui/mobile-toolbar.ts';
+import { createMobilePoster } from './ui/mobile-poster.ts';
 import type ArtifactsPlugin from './main.ts';
 
 export const ARTIFACT_VIEW_TYPE = 'artifacts-html-view';
 
 export class ArtifactView extends FileView {
   private renderer: HtmlRenderer;
+  private disposeToolbar: (() => void) | null = null;
+  private disposePoster: (() => void) | null = null;
+  // Mobile only: whether the user has tapped through the tap-to-load poster for the current file.
+  private activated = false;
   private reloadOnModify = debounce((file: TAbstractFile) => {
     if (this.file && file instanceof TFile && file.path === this.file.path) {
       void this.renderCurrentFile();
@@ -35,10 +42,15 @@ export class ArtifactView extends FileView {
   }
 
   async onLoadFile(): Promise<void> {
+    this.activated = false;
     await this.renderCurrentFile();
   }
 
   async onUnloadFile(): Promise<void> {
+    this.disposeToolbar?.();
+    this.disposeToolbar = null;
+    this.disposePoster?.();
+    this.disposePoster = null;
     this.renderer.clear(this.contentEl);
   }
 
@@ -47,9 +59,61 @@ export class ArtifactView extends FileView {
   }
 
   private async renderCurrentFile(): Promise<void> {
-    if (!this.file) return;
+    const file = this.file;
+    if (!file) return;
     this.contentEl.addClass('artifacts-container');
-    await this.renderer.render(this.contentEl, this.file);
+
+    // On mobile the iframe fallback shares Obsidian's main thread, so an artifact that loads
+    // external scripts can freeze the whole app if it auto-runs. Gate it behind an explicit tap.
+    if (Platform.isMobile && !this.activated) {
+      let raw = '';
+      try {
+        raw = await this.app.vault.cachedRead(file);
+      } catch {
+        /* fall through to render */
+      }
+      if (hasExternalScripts(raw)) {
+        this.showPoster(file);
+        return;
+      }
+    }
+
+    this.disposePoster?.();
+    this.disposePoster = null;
+    await this.renderer.render(this.contentEl, file);
+    this.mountToolbar();
+  }
+
+  private showPoster(file: TFile): void {
+    this.disposeToolbar?.();
+    this.disposeToolbar = null;
+    this.disposePoster?.();
+    this.renderer.clear(this.contentEl);
+    this.disposePoster = createMobilePoster(this.contentEl, {
+      title: file.basename,
+      warn: 'Loads external scripts — on mobile this can slow down or freeze the app.',
+      onOpen: () => {
+        this.activated = true;
+        void this.renderCurrentFile();
+      },
+      onExternal: () => this.openExternally(),
+    });
+  }
+
+  // The renderer empties contentEl on every render, so the toolbar is (re)mounted afterwards.
+  private mountToolbar(): void {
+    this.disposeToolbar?.();
+    this.disposeToolbar = null;
+    if (!Platform.isMobile || !this.file) return;
+    this.disposeToolbar = createMobileToolbar(this.contentEl, [
+      { icon: 'rotate-cw', label: 'Reload artifact', onClick: () => void this.renderCurrentFile() },
+      { icon: 'external-link', label: 'Open externally', onClick: () => this.openExternally() },
+    ]);
+  }
+
+  private openExternally(): void {
+    if (!this.file) return;
+    window.open(this.app.vault.getResourcePath(this.file), '_blank');
   }
 
   private handleNavigate(link: ResolvedLink): void {
