@@ -23,7 +23,7 @@ export function whenSized(
   debounceMs = 80,
 ): () => void {
   let done = false;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: number | null = null;
 
   const settle = (): void => {
     if (done || el.clientHeight <= 0) return;
@@ -34,8 +34,8 @@ export function whenSized(
 
   const schedule = (): void => {
     if (done || el.clientHeight <= 0) return;
-    if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(settle, debounceMs);
+    if (timer !== null) window.clearTimeout(timer);
+    timer = window.setTimeout(settle, debounceMs);
   };
 
   const observer = new ResizeObserver(schedule);
@@ -45,6 +45,6 @@ export function whenSized(
   return (): void => {
     done = true;
     observer.disconnect();
-    if (timer !== null) clearTimeout(timer);
+    if (timer !== null) window.clearTimeout(timer);
   };
 }
