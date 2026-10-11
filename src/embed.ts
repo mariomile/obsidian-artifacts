@@ -50,6 +50,17 @@ class ArtifactEmbed extends Component {
     this.registerEvent(this.ctx.app.vault.on('modify', this.reloadOnModify));
   }
 
+  // Obsidian calls loadFile() on every embed component it creates, once the embed
+  // is due to show; without it the host note fails to open ("l.loadFile is not a
+  // function"). It is also the render trigger: the IntersectionObserver alone never
+  // fires for the zero-height container in Live Preview.
+  async loadFile(): Promise<void> {
+    if (this.loaded) return;
+    this.loaded = true;
+    this.observer?.disconnect();
+    await this.presentOrRender();
+  }
+
   onunload(): void {
     this.observer?.disconnect();
     this.disposeToolbar?.();

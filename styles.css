@@ -30,6 +30,9 @@
 .artifacts-embed-container {
   display: block;
   width: 100%;
+  /* Fixed height on the container, not the frame: the webview is attached only
+     once its host has a real height, so the host must be sized before it. */
+  height: 480px;
   overflow: hidden;
   border-radius: var(--radius-m);
   position: relative;
@@ -38,7 +41,7 @@
 .artifacts-embed-container .artifacts-frame {
   display: block;
   width: 100%;
-  height: 480px;
+  height: 100%;
   border: none;
   background: var(--background-primary);
 }
