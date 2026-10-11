@@ -8,6 +8,18 @@ Consolidates three previously-separate plugins into one:
 - Auto-reload when the source file changes
 - Desktop-only "Screenshot artifact to PNG" command
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/embed.png" width="900" alt="Artifacts: an HTML artifact embedded in a note" />
+</p>
+<p align="center"><em>An HTML artifact embedded inline with <code>![[Activation Funnel.html]]</code>.</em></p>
+
+<p align="center">
+  <img src="docs/tab.png" width="900" alt="Artifacts: an HTML file open in its own tab" />
+</p>
+<p align="center"><em>The same file opened directly, as a standalone tab.</em></p>
+
 ## Development
 
 ```bash
