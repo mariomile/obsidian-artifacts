@@ -3,7 +3,7 @@
   "name": "Artifacts",
   "version": "0.1.1",
   "minAppVersion": "1.12.7",
-  "description": "View, embed, and screenshot self-contained HTML artifacts inside Obsidian.",
+  "description": "View, embed, and screenshot self-contained HTML artifacts in your vault.",
   "author": "Mario Miletta",
   "isDesktopOnly": false
 }

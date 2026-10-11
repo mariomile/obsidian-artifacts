@@ -135,7 +135,7 @@ export class HtmlRenderer {
         // Force the guest to re-sync to the settled host box. A <webview>
         // attached via a CSS class alone keeps the 150px default; an explicit
         // inline display assignment triggers the reflow that resizes the guest.
-        webview.style.display = 'flex';
+        webview.setCssStyles({ display: 'flex' });
       }
     });
   }

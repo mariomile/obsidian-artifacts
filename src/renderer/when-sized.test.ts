@@ -34,12 +34,15 @@ const setHeight = (el: HTMLElement, h: number) => {
 beforeEach(() => {
   FakeResizeObserver.instances = [];
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver = FakeResizeObserver;
+  // The module uses window.* timers (popout-safe); Node has no window.
+  (globalThis as { window?: unknown }).window = globalThis;
   mock.timers.enable({ apis: ['setTimeout'] });
 });
 
 afterEach(() => {
   mock.timers.reset();
   delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+  delete (globalThis as { window?: unknown }).window;
 });
 
 test('fires after the debounce once an already-sized element is stable', () => {
