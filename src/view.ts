@@ -15,18 +15,21 @@ export class ArtifactView extends FileView {
   private disposePoster: (() => void) | null = null;
   // Mobile only: whether the user has tapped through the tap-to-load poster for the current file.
   private activated = false;
-  private reloadOnModify = debounce((file: TAbstractFile) => {
-    if (this.file && file instanceof TFile && file.path === this.file.path) {
-      void this.renderCurrentFile();
-    }
-  }, 300, true);
+  private reload = debounce(() => void this.renderCurrentFile(), 300, true);
 
   constructor(leaf: WorkspaceLeaf, private plugin: ArtifactsPlugin) {
     super(leaf);
     this.renderer = new HtmlRenderer(this.app, this.plugin.settings, {
       onNavigate: (link) => this.handleNavigate(link),
     });
-    this.registerEvent(this.app.vault.on('modify', this.reloadOnModify));
+    // Match the file before debouncing: a debounce keeps only the last call's argument, so a
+    // save of any other note inside the window would swallow this artifact's reload.
+    this.registerEvent(
+      this.app.vault.on('modify', (file: TAbstractFile) => {
+        if (this.file && file instanceof TFile && file.path === this.file.path) this.reload();
+      }),
+    );
+    this.register(() => this.reload.cancel());
   }
 
   getViewType(): string {

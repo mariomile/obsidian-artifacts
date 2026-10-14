@@ -17,11 +17,7 @@ class ArtifactEmbed extends Component {
   private activated = false;
   private disposeToolbar: (() => void) | null = null;
   private disposePoster: (() => void) | null = null;
-  private reloadOnModify = debounce((file: TAbstractFile) => {
-    if (this.activated && file instanceof TFile && file.path === this.file.path) {
-      void this.renderArtifact();
-    }
-  }, 300, true);
+  private reload = debounce(() => void this.renderArtifact(), 300, true);
 
   constructor(private ctx: EmbedContext, private file: TFile, plugin: ArtifactsPlugin) {
     super();
@@ -47,7 +43,14 @@ class ArtifactEmbed extends Component {
       }
     });
     this.observer.observe(this.ctx.containerEl);
-    this.registerEvent(this.ctx.app.vault.on('modify', this.reloadOnModify));
+    // Match the file before debouncing: a debounce keeps only the last call's argument, so a
+    // save of any other note inside the window would swallow this artifact's reload.
+    this.registerEvent(
+      this.ctx.app.vault.on('modify', (file: TAbstractFile) => {
+        if (this.activated && file instanceof TFile && file.path === this.file.path) this.reload();
+      }),
+    );
+    this.register(() => this.reload.cancel());
   }
 
   // Obsidian calls loadFile() on every embed component it creates, once the embed
