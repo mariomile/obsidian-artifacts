@@ -75,6 +75,9 @@ export class ArtifactView extends FileView {
       } catch {
         /* fall through to render */
       }
+      // The view closed or switched file during the read: onUnloadFile already cleared, so
+      // rendering now would leave a frame (and its message listener) behind on a dead view.
+      if (this.file !== file) return;
       if (hasExternalScripts(raw)) {
         this.showPoster(file);
         return;
