@@ -6,15 +6,22 @@ import { registerHtmlEmbed, unregisterHtmlEmbed } from './obsidian-internals.ts'
 import type { EmbedContext } from './obsidian-internals.ts';
 import { createMobileToolbar } from './ui/mobile-toolbar.ts';
 import { createMobilePoster } from './ui/mobile-poster.ts';
+import { createOffscreenTimer } from './offscreen-timer.ts';
 import type ArtifactsPlugin from './main.ts';
 
 const HTML_EXTENSIONS = ['html', 'htm'];
+// Desktop: each <webview> is its own renderer process, so an embed out of view this long is torn
+// down and rendered again when it scrolls back. Mobile keeps its tap-to-load poster instead.
+const OFFSCREEN_UNLOAD_MS = 30_000;
 
 class ArtifactEmbed extends Component {
   private renderer: HtmlRenderer;
   private observer: IntersectionObserver | null = null;
   private loaded = false;
   private activated = false;
+  // Desktop: the frame was torn down after staying out of view; re-rendered when visible again.
+  private suspended = false;
+  private offscreen = createOffscreenTimer(OFFSCREEN_UNLOAD_MS, () => this.suspend());
   private disposeToolbar: (() => void) | null = null;
   private disposePoster: (() => void) | null = null;
   private reload = debounce(() => void this.renderArtifact(), 300, true);
@@ -36,18 +43,24 @@ class ArtifactEmbed extends Component {
   onload(): void {
     this.ctx.containerEl.addClass('artifacts-embed-container');
     this.observer = new IntersectionObserver((entries) => {
-      if (!this.loaded && entries.some((entry) => entry.isIntersecting)) {
+      // Several entries can queue up for the one target: the last is the current state.
+      const visible = entries[entries.length - 1]?.isIntersecting ?? false;
+      if (!this.loaded) {
+        if (!visible) return;
         this.loaded = true;
         void this.presentOrRender();
-        this.observer?.disconnect();
+        if (Platform.isMobile) this.observer?.disconnect();
+        return;
       }
+      if (visible && this.suspended) void this.renderArtifact();
+      this.offscreen.update(visible);
     });
     this.observer.observe(this.ctx.containerEl);
     // Match the file before debouncing: a debounce keeps only the last call's argument, so a
     // save of any other note inside the window would swallow this artifact's reload.
     this.registerEvent(
       this.ctx.app.vault.on('modify', (file: TAbstractFile) => {
-        if (this.activated && file instanceof TFile && file.path === this.file.path) this.reload();
+        if (this.activated && !this.suspended && file instanceof TFile && file.path === this.file.path) this.reload();
       }),
     );
     this.register(() => this.reload.cancel());
@@ -60,12 +73,14 @@ class ArtifactEmbed extends Component {
   async loadFile(): Promise<void> {
     if (this.loaded) return;
     this.loaded = true;
-    this.observer?.disconnect();
+    // Desktop keeps observing to unload the frame while it is out of view.
+    if (Platform.isMobile) this.observer?.disconnect();
     await this.presentOrRender();
   }
 
   onunload(): void {
     this.observer?.disconnect();
+    this.offscreen.cancel();
     this.disposeToolbar?.();
     this.disposeToolbar = null;
     this.disposePoster?.();
@@ -108,8 +123,15 @@ class ArtifactEmbed extends Component {
     });
   }
 
+  private suspend(): void {
+    this.suspended = true;
+    this.reload.cancel();
+    this.renderer.clear(this.ctx.containerEl);
+  }
+
   private async renderArtifact(): Promise<void> {
     this.activated = true;
+    this.suspended = false;
     this.disposePoster?.();
     this.disposePoster = null;
     await this.renderer.render(this.ctx.containerEl, this.file);
