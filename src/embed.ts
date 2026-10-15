@@ -21,6 +21,8 @@ class ArtifactEmbed extends Component {
   private activated = false;
   // Desktop: the frame was torn down after staying out of view; re-rendered when visible again.
   private suspended = false;
+  // Set on unload: a render whose file read was still pending must not mount a frame afterwards.
+  private unloaded = false;
   private offscreen = createOffscreenTimer(OFFSCREEN_UNLOAD_MS, () => this.suspend());
   private disposeToolbar: (() => void) | null = null;
   private disposePoster: (() => void) | null = null;
@@ -79,6 +81,7 @@ class ArtifactEmbed extends Component {
   }
 
   onunload(): void {
+    this.unloaded = true;
     this.observer?.disconnect();
     this.offscreen.cancel();
     this.disposeToolbar?.();
@@ -98,6 +101,7 @@ class ArtifactEmbed extends Component {
       } catch {
         /* fall through to render */
       }
+      if (this.unloaded) return;
       if (hasExternalScripts(raw)) {
         this.showPoster();
         return;
@@ -135,6 +139,10 @@ class ArtifactEmbed extends Component {
     this.disposePoster?.();
     this.disposePoster = null;
     await this.renderer.render(this.ctx.containerEl, this.file);
+    if (this.unloaded) {
+      this.renderer.clear(this.ctx.containerEl);
+      return;
+    }
     this.mountToolbar();
   }
 
